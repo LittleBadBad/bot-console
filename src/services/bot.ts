@@ -38,10 +38,6 @@ async function removeBot(uin: number) {
     }
 }
 
-/**
- * todo 优化
- * @param botInfo
- */
 async function updateBot(botInfo: IBotData) {
     const i = getBots().findIndex(v => v.uin === botInfo.uin)
     if (i > -1) {

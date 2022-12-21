@@ -200,9 +200,6 @@ async function loadPlugin(plugin: IPluginData, bot: IOICQBot, managers: number[]
     const dbPath = path.join(DATA_DIR_ROOT, bot.uin.toString())
     if (!fs.existsSync(dbPath))
         await fs.promises.mkdir(dbPath, {recursive: true})
-    /**
-     * todo todo todo
-     */
     const db = new LowWithLodash<IDb>(new JSONFileSync<IDb>(path.join(dbPath, plugin.name + ".json")))
     const pluginDetail = (await resolveModule(plugin))(bot, managers, db)
     return {

@@ -1,3 +1,5 @@
+[TOC]
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped
 with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
@@ -54,17 +56,17 @@ yarn dev
 
 ### http
 
-`/api/bot/plugin` `GET`
+- `/api/bot/plugin` `GET` 获取一个或多个插件
 
-`/api/bot/plugin/[name]` `GET`
+- `/api/bot/plugin/[name]` `GET` 获取name为[name]的插件
 
-`/api/bot/plugin` `POST`
+- `/api/bot/plugin` `POST` 新建一个插件
 
-`/api/bot/plugin` `PUT`
+- `/api/bot/plugin` `PUT` 修改一个插件
 
-`/api/bot/plugin` `DELETE`
+- `/api/bot/plugin` `DELETE` 删除一个插件
 
-`/api/bot/plugin/[name]` `DELETE`
+- `/api/bot/plugin/[name]` `DELETE` 删除name为[name]的插件
 
 ## 插件开发
 
@@ -174,6 +176,36 @@ export default callDaddy
 - 参数 managers 安装时设置的本插件管理员
 - 参数 db 安装时为此机器人此插件设置的lowdb对象，插件数据的路径为 `__dirname/pluginData/[uin]/[plugin_name].json`
 
+### 载入
+
+插件数据在数据文件中以`IPluginData{name,path,code}`格式存储
+
+- name 插件名，可中文可英文，不建议重复
+- path 插件代码文件存储路径，建议使用绝对路径（后期优化目标为可通过相对路径打开插件项目的全部文件）
+- code 暂存插件的代码内容，目前无实际用途（后期优化目标为插件文件损坏或无法加载时，通过此项加载插件）
+
+目前尚未实现插件自动扫盘加载的功能，可以在`index.ts`的初始化数据文件中载入
+
+```typescript
+    db.data ||= {
+    bots: [],
+    plugins: [{name: "", path: "", code: ""}]// 在此添加
+}
+```
+
+也可以在项目启动后生成的`db.json`数据文件中，手动添加插件信息
+
+```json
+{
+  "plugins": [
+    {
+      "name": "叫爸爸",
+      "path": "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\src\\plugins\\callDaddy.ts"
+    }
+  ]
+}
+```
+
 ## Roadmap
 
 | 计划 | 状态 |
@@ -181,6 +213,7 @@ export default callDaddy
 |[旧版](https://www.npmjs.com/package/littlebad-bot) 插件迁移|⛏|
 |插件管理http接口鉴权|📅|
 |可视化页面优化|📅|
+|可视化页面可编辑config|📅|
 |本地插件扫描加载|📅|
 |测试用例编写|📅|
 |插件独立为项目模块并编辑|📅|
