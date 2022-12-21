@@ -6,7 +6,7 @@ with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/
 基于 [nextjs](https://nextjs.org/) + [oicq](https://www.npmjs.com/package/oicq)
 搭建的机器人管理程序，提供一些WS、HTTP的api来控制后台运行中的机器人，以及机器人功能插件的安装、启动、关闭和卸载。并提供机器人插件开发的接口，且支持机器人插件的动态装载和启动；并提供了一个简陋的可视化界面，基本具备全部必要的交互逻辑
 
-目前仅支持多用户对一组机器人管理
+目前仅支持多用户对同一组机器人管理
 
 ## 启动
 
