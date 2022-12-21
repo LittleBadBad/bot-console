@@ -1,8 +1,14 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+This is a [Next.js](https://nextjs.org/) project bootstrapped
+with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+# oicq机器人管理后台
 
-First, run the development server:
+基于 [nextjs](https://nextjs.org/) + [oicq](https://www.npmjs.com/package/oicq)
+搭建的机器人管理程序，提供一些WS、HTTP的api来控制后台运行中的机器人，以及机器人功能插件的安装、启动、关闭和卸载。并提供机器人插件开发的接口，且支持机器人插件的动态装载和启动；并提供了一个简陋的可视化界面，基本具备全部必要的交互逻辑
+
+目前仅支持多用户对一组机器人管理
+
+## 启动
 
 ```bash
 npm run dev
@@ -10,25 +16,172 @@ npm run dev
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+### ws
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+监听事件
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+| event | description |
+|---|---|
+| BOT_CREATE | 创建机器人 |
+| BOT_READ | 读取已加载的机器人，无qq参数则读取全部 |
+| BOT_UPDATE | 机器人信息更新（更新后会下线，插件保留但全部关闭） |
+| BOT_DELETE | 删除机器人 |
+| BOT_LOGIN | 登录机器人 |
+| BOT_LOGIN_SLIDER | 提交滑块获取的ticket |
+| BOT_LOGOUT | 机器人下线 |
+| PLUGIN_INSTALL | 安装插件（插件代码有变化，则需要发送此事件重新启动） |
+| PLUGIN_UNINSTALL | 卸载插件 |
+| PLUGIN_ACTIVATE | 启动插件 |
+| PLUGIN_DEACTIVATE | 关闭插件 |
+| disconnect | socket.io指定断连事件 |
+| ACCOUNT_LOGIN | 账户登录（登录后才能进入online房间，客户端才能发送以上消息并接收以下的消息） |
 
-## Learn More
+发送事件
 
-To learn more about Next.js, take a look at the following resources:
+| event | description |
+|---|---|
+| BOT_STATUS | 全部机器人的状态 |
+| BOT_LOGIN_DEVICE | 设备锁验证 |
+| BOT_LOGIN_ERROR | 登录出错 |
+| BOT_LOGIN_QRCODE | 二维码登录 |
+| BOT_LOGIN_SLIDER | 滑块验证 |
+| BOT_OFFLINE | 机器人下线事件 |
+| BOT_OFFLINE_KICKOFF | 机器人被挤下线 |
+| BOT_ONLINE | 机器人上线事件 |
+| message | socket.io默认消息事件 |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### http
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+`/api/bot/plugin` `GET`
 
-## Deploy on Vercel
+`/api/bot/plugin/[uin]` `GET`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`/api/bot/plugin` `POST`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+`/api/bot/plugin` `PUT`
+
+`/api/bot/plugin` `DELETE`
+
+`/api/bot/plugin/[name]` `DELETE`
+
+## 插件开发
+
+### 格式
+
+- commonJS
+
+```javascript
+module.exports = function createPlugin() {
+    /**
+     * 类型提示引入方法
+     * @type {import("../src/types").IOrder}
+     */
+    const wang = {
+        trigger: /^叫$/,
+        action(e) {
+            e.reply("汪汪", true)
+        }
+    }
+
+    return {
+        orders: [wang]
+    }
+}
+```
+
+- moduleJS
+
+```javascript
+const thumbUp = (bot) => {
+    return {
+        orders: [{
+            trigger: /^赞我$/,
+            auth: _ => true,
+            action(e) {
+                const uid = e.sender.user_id
+                const client = bot.client
+                client.sendLike(uid, 1)
+                    .then(_ => e.reply("赞了1次", true))
+                    .catch(_ => e.reply("赞失败", true))
+            }
+        }]
+    }
+}
+
+export default thumbUp
+```
+
+- typescript
+
+```typescript
+import {CP, IOrder} from "../types";
+
+const callDaddy: CP = (bot, managers) => {
+    const daddy: IOrder = {
+        trigger: "叫爸爸",
+        action(e) {
+            return e.reply("爸爸", true);
+        },
+        auth: bot.managers
+    }
+    return {
+        orders: [daddy]
+    }
+}
+export default callDaddy
+```
+
+### interface
+
+#### IOrder
+
+插件命令
+
+- trigger 触发条件
+
+    - 触发关键词/关键词列表/正则表达式/其他函数处理
+    - 注：触发指关键语句中包含该词，完全匹配请使用正则或函数手动处理
+    - 基于插件安全使用的原则，默认不触发
+    - 若需要默认全部触发，可设置为 `""` 或 `_=>true`
+
+- auth 有权限的成员选择
+    - 成员uin/有权限成员列表/返回成员列表的函数(消息对象)
+    - 插件小规模自用的原则，默认机器人管理员
+    - 若需要默认全部触发，可设置为 `_=>true`
+
+- action 处理命令
+    - 参数 e oicq消息对象
+
+#### IPluginDetail
+
+- orders 命令集合
+
+- managers 插件管理员
+
+- onActivate 插件启动时的操作
+    - 参数 bot 机器人对象
+
+- onDeactivate 插件关闭时操作
+    - 参数 bot 机器人对象
+
+#### CP (Create Plugin)
+
+插件最终模块导出的函数
+
+- 参数 bot oicq对象
+- 参数 managers 安装时设置的本插件管理员
+- 参数 db 安装时为此机器人此插件设置的lowdb对象，插件数据的路径为 `__dirname/pluginData/[uin]/[plugin_name].json`
+
+## Roadmap
+
+| 计划 | 状态 |
+|---|---|
+|[旧版](https://www.npmjs.com/package/littlebad-bot) 插件迁移|⛏|
+|插件管理http接口鉴权|📅|
+|可视化页面优化|📅|
+|本地插件扫描加载|📅|
+|测试用例编写|📅|
+|插件独立为项目模块并编辑|📅|
+|项目打包|📅|
