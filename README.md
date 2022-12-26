@@ -187,7 +187,7 @@ export default callDaddy
 目前尚未实现插件自动扫盘加载的功能，可以在`index.ts`的初始化数据文件中载入
 
 ```typescript
-    db.data ||= {
+db.data ||= {
     bots: [],
     plugins: [{name: "", path: "", code: ""}]// 在此添加
 }

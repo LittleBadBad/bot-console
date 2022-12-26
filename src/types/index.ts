@@ -93,6 +93,11 @@ export interface IOrder {
      * @param e 消息对象，client在插件安装时已传入，不重复传入
      */
     action?(e: PrivateMessageEvent | GroupMessageEvent | DiscussMessageEvent)
+
+    /**
+     * 命令的揭示字段
+     */
+    desc?:string
 }
 
 export interface IPluginDetail {

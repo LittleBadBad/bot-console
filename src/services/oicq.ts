@@ -148,15 +148,16 @@ function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster, socket?: So
         roomBroadcaster.emit("BOT_ONLINE")
     }).on("message", event => {
         const {plugins} = bot
+        const raw_message = event.raw_message.trim()
         for (const plugin of plugins.filter(v => v.activated)) {
             for (const order of plugin.orders) {
                 const {trigger, auth} = order
                 if (
                     (
                         trigger &&
-                        ((typeof trigger === "string" && event.raw_message.includes(trigger)) ||
-                            (Array.isArray(trigger) && trigger.find(v => event.raw_message.includes(v))) ||
-                            (trigger instanceof RegExp && trigger.test(event.raw_message)) ||
+                        ((typeof trigger === "string" && raw_message.includes(trigger)) ||
+                            (Array.isArray(trigger) && trigger.find(v => raw_message.includes(v))) ||
+                            (trigger instanceof RegExp && trigger.test(raw_message)) ||
                             (typeof trigger === "function" && trigger(event)))
                     ) && (
                         (typeof auth === "number" && auth === event.user_id) ||
@@ -200,7 +201,7 @@ async function loadPlugin(plugin: IPluginData, bot: IOICQBot, managers: number[]
     const dbPath = path.join(DATA_DIR_ROOT, bot.uin.toString())
     if (!fs.existsSync(dbPath))
         await fs.promises.mkdir(dbPath, {recursive: true})
-    const db = new LowWithLodash<IDb>(new JSONFileSync<IDb>(path.join(dbPath, plugin.name + ".json")))
+    const db = new LowWithLodash(new JSONFileSync(path.join(dbPath, plugin.name + ".json")))
     const pluginDetail = (await resolveModule(plugin))(bot, managers, db)
     return {
         ...pluginDetail,
