@@ -1,5 +1,5 @@
 import {Socket} from "socket.io";
-import {IBotData, IPlugin, ITip} from "../types";
+import {IBotData, IConfig, IPlugin, ITip} from "../types";
 import Buffer from "buffer";
 import {DefaultEventsMap} from "socket.io/dist/typed-events";
 
@@ -62,9 +62,9 @@ export interface ClientSocket extends Socket<DefaultEventsMap, DefaultEventsMap>
      * @param event
      * @param uin
      * @param plugin
-     * @param managers
+     * @param config
      */
-    emit(event: "PLUGIN_INSTALL", uin: number, plugin: string, managers: number[]): boolean
+    emit(event: "PLUGIN_INSTALL", uin: number, plugin: string, config:IConfig): boolean
 
     /**
      * 插件卸载事件监听

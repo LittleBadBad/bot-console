@@ -27,7 +27,7 @@ export type IBotData = {
     password?: string
     config: Config
     managers: number[]
-    plugins: (IPluginData & { managers?: number[] })[]
+    plugins: (IPluginData & IPluginInfo)[]
 }
 
 export interface IOICQBot extends IBotData {
@@ -97,10 +97,24 @@ export interface IOrder {
     /**
      * 命令的揭示字段
      */
-    desc?:string
+    desc?: string
 }
 
-export interface IPluginDetail {
+export type IConfig<T extends Record<any, any> = any> = {
+    managers: number[],
+} & {
+    [K in keyof T]: T[K]
+};
+
+export interface IPluginInfo {
+
+    /**
+     * 安装后的机器人uid
+     *
+     * todo 设置一个机器人可安装多个插件
+     */
+    id: string
+
     /**
      * 插件是否启动
      */
@@ -112,14 +126,18 @@ export interface IPluginDetail {
     broken?: boolean
 
     /**
+     * 插件设置，其中必包含管理员这一项，
+     * 安装时才会被传入插件创建函数，
+     * 用于设置一些仅系统管理员在安装时才可配置的参数
+     */
+    config: IConfig
+}
+
+export interface IPluginDetail {
+    /**
      * 命令集合
      */
     orders: IOrder[]
-
-    /**
-     * 插件管理员
-     */
-    managers?: number[]
 
     /**
      * 启动时的操作
@@ -134,7 +152,7 @@ export interface IPluginDetail {
     onDeactivate?(bot: IOICQBot): void
 }
 
-export type IPlugin = IPluginData & IPluginDetail
+export type IPlugin = IPluginData & IPluginDetail & IPluginInfo
 
 export class LowWithLodash<T> extends LowSync<T> {
     chain: ExpChain<this['data']> = chain(this).get('data')
@@ -143,8 +161,8 @@ export class LowWithLodash<T> extends LowSync<T> {
 /**
  * creat plugin
  * @param bot oicq对象
- * @param managers 安装时设置的本插件管理员
+ * @param config 安装时的设置参数，managers必存在，其他自行设置
  * @param db 安装时设置的lowdb对象，插件数据的路径为 __dirname/pluginData/[uin]/[plugin_name]
  * @return IPluginDetail 插件详细内容
  */
-export type CP<D = any> = (bot: IOICQBot, managers: number[], db: LowWithLodash<D>) => IPluginDetail
+export type CP<C = any, D = any> = (bot: IOICQBot, config: IConfig<C>, db: LowWithLodash<D>) => IPluginDetail

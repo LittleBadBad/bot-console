@@ -77,8 +77,8 @@ function Bot({uin, password, managers, config, plugins, online, login, logout, e
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                minWidth: 400,
-                minHeight: 200, backgroundColor: "#ffffff"
+                minWidth: 600,
+                minHeight: 200, maxHeight: 700, overflow: "auto", backgroundColor: "#ffffff"
             }}><h5 style={{textAlign: "center"}}>{uin} 插件</h5>
                 <div style={{display: "flex", alignItems: "center"}}>
                     <ol>
@@ -103,18 +103,25 @@ function Bot({uin, password, managers, config, plugins, online, login, logout, e
                                         socket.emit("PLUGIN_UNINSTALL",
                                             uin,
                                             v.name)}>卸载</button> :
-                                    <button onClick={() =>
+                                    <button onClick={() => {
+                                        let config
+                                        try {
+                                            config = JSON.parse((document.getElementById(id) as HTMLInputElement)
+                                                .value)
+                                        } catch (e) {
+                                            config = {managers: []}
+                                        }
                                         socket.emit("PLUGIN_INSTALL",
                                             uin,
                                             v.name,
-                                            (document.getElementById(id) as HTMLInputElement)
-                                                .value.split(",").map(v => parseInt(v)))
+                                            config)
+                                    }
                                     }>安装</button>}
                                 <div>
-                                    <input placeholder={"管理员"}
-                                           id={id}
-                                           readOnly={!!p}
-                                           defaultValue={p?.managers?.join(",") || ""}/>
+                                    <textarea placeholder={"管理员"}
+                                              id={id}
+                                              readOnly={!!p}
+                                              defaultValue={JSON.stringify(p?.config) || ""}/>
                                 </div>
                             </li>
                         })}
@@ -152,7 +159,11 @@ function Bot({uin, password, managers, config, plugins, online, login, logout, e
                         <input placeholder={"name"}
                                {...currentPlugin.name ? {value: currentPlugin.name} : {}}
                                defaultValue={currentPlugin.name} name={"name"}/>
-                        <textarea placeholder={"code"} name={"code"} defaultValue={currentPlugin.code}/>
+                        <textarea placeholder={"code"}
+                                  name={"code"}
+                                  rows={50}
+                                  style={{width: 500}}
+                                  defaultValue={currentPlugin.code}/>
                         <div>
                             <button onClick={() => setCurrentPlugin(undefined)}>取消</button>
                             <button type={"submit"}>提交</button>

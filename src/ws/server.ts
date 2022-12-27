@@ -3,8 +3,8 @@ import {DefaultEventsMap} from "socket.io/dist/typed-events";
 import Buffer from "buffer";
 import {BOT_LOGGED, BOT_LOGGED_OUT, CONNECTED, DISCONNECTED} from "../errors";
 import login from "./login";
-import {IBotData} from "../types";
-import {botServices, oicqServices, pluginServices} from "../services";
+import {IBotData, IConfig} from "../types";
+import {botServices, oicqServices} from "../services";
 import db from "../db";
 import _ from "lodash";
 
@@ -81,7 +81,7 @@ export interface BotSocket extends Socket {
      * @param event
      * @param listener
      */
-    on(event: "PLUGIN_INSTALL", listener: (uin: number, plugin: string, managers: number[]) => void): this
+    on(event: "PLUGIN_INSTALL", listener: (uin: number, plugin: string, config: IConfig<any>) => void): this
 
     /**
      * 插件卸载事件监听
@@ -255,14 +255,20 @@ function initSocket(socket: BotSocket, listener: <T extends (...args: any[]) => 
             throw BOT_LOGGED
         }
     }))
-    socket.on("PLUGIN_INSTALL", listener(async (uin, name, managers) => {
-        await oicqServices.installPlugin(uin, name, managers)
+    socket.on("PLUGIN_INSTALL", listener(async (uin, name, config) => {
+        // await oicqServices.installPlugin(uin, name, managers)
         const bot = botServices.getBot(uin)
-        const plugin = pluginServices.getPlugin(name)
+        const {path, code, id, activated, broken} = await oicqServices.installPlugin(uin, name, config)//pluginServices.getPlugin(name)
         await botServices.updateBot({
             ...bot,
-            plugins: [...bot.plugins || [],
-                {...plugin, managers}]
+            plugins: [
+                ...bot.plugins || [], {
+                    id,
+                    name,
+                    path,
+                    code,
+                    config
+                }]
         })
         socket.send({message: "安装成功"})
     }))
@@ -287,6 +293,9 @@ function initSocket(socket: BotSocket, listener: <T extends (...args: any[]) => 
 
 }
 
+/**
+ * @deprecated
+ */
 async function syncData() {
     db.read()
     const bots = oicqServices.getOicqBots();
@@ -299,7 +308,7 @@ async function syncData() {
                 console.error(e)
             }
         } else if (_.isEqual(
-            _.pick(bot, ["password", "plugins", "managers", "config"]),
+            _.pick(bot, ["password", "plugins", "config"]),
             b)) {
             await oicqServices.updateOicqBot(bot)
         }
@@ -327,7 +336,7 @@ export function initWSServer() {
                               plugins,
                               config,
                               online
-                          }) =>
+                          }) =>// todo 优化plugin数据的传输
                     ({uin, managers, plugins, config, online})))
     }, 1000)
 

@@ -1,13 +1,13 @@
 import {createClient} from "oicq";
 import {Socket} from "socket.io";
-import {CP, IBotData, IOICQBot, IPlugin, IPluginData, LowWithLodash} from "../types";
+import {CP, IBotData, IConfig, IOICQBot, IPlugin, IPluginData, LowWithLodash} from "../types";
 import {BOT_EXISTED, BOT_NOT_EXIST, PLUGIN_INSTALLED, PLUGIN_NOT_INSTALLED} from "../errors";
 import {RoomBroadcaster, wsServer} from "../ws";
 import {pluginServices} from ".";
 import {JSONFileSync} from "../vendor/lowdb/adapters/JSONFileSync";
-import {IDb} from "../db";
 import path from "path";
 import fs from "fs";
+import {uuid} from "oicq/lib/common";
 
 const DATA_DIR_ROOT = "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\pluginData"
 
@@ -49,7 +49,6 @@ export async function resolveModule({path, ...args}: IPluginData): Promise<CP> {
             path,
             broken: true,
             activated: false,
-            managers: [],
             orders: []
         })
         // }
@@ -84,7 +83,7 @@ async function addOicqBot(botInfo: IBotData) {
             online: false,
             client
         }
-        bot.plugins = await Promise.all(botInfo.plugins?.map(v => loadPlugin(v, bot)) || [])
+        bot.plugins = await Promise.all(botInfo.plugins?.map(v => loadPlugin(v, bot, v.config)) || [])
         getOicqBots().push(bot)
         attachSocket(botInfo.uin, wsServer as unknown as RoomBroadcaster)
         console.log(bot.uin, "已加载")
@@ -121,7 +120,7 @@ async function updateOicqBot(botInfo: IBotData) {
     getOicqBots()[i] = {
         ...oicqBot,
         ...botInfo,
-        plugins: await Promise.all(oicqBot.plugins.map(v => loadPlugin(v, oicqBot)))
+        plugins: await Promise.all(oicqBot.plugins.map(v => loadPlugin(v, oicqBot, v.config)))
     }
 }
 
@@ -197,23 +196,28 @@ async function logoutBot(uin: number) {
     }
 }
 
-async function loadPlugin(plugin: IPluginData, bot: IOICQBot, managers: number[] = []): Promise<IPlugin> {
+async function loadPlugin(plugin: IPluginData, bot: IOICQBot, config: IConfig = {managers: []}): Promise<IPlugin> {
+    config.managers ||= []
     const dbPath = path.join(DATA_DIR_ROOT, bot.uin.toString())
     if (!fs.existsSync(dbPath))
         await fs.promises.mkdir(dbPath, {recursive: true})
     const db = new LowWithLodash(new JSONFileSync(path.join(dbPath, plugin.name + ".json")))
-    const pluginDetail = (await resolveModule(plugin))(bot, managers, db)
+    const pluginDetail = (await resolveModule(plugin))(bot, config, db)
     return {
         ...pluginDetail,
-        ...plugin
+        ...plugin,
+        config,
+        id: uuid()
     }
 }
 
-async function installPlugin(uin: number, name: string, managers: number[]) {
+async function installPlugin(uin: number, name: string, config: IConfig): Promise<IPlugin> {
     const oicqBot = getOicqBot(uin)
     const plugin = oicqBot.plugins.find(v => v.name === name)
     if (plugin) throw PLUGIN_INSTALLED
-    oicqBot.plugins.push(await loadPlugin(await pluginServices.getPlugin(name), oicqBot, managers))
+    const p = await loadPlugin(await pluginServices.getPlugin(name), oicqBot, config)
+    oicqBot.plugins.push(p)
+    return p
 }
 
 /**
