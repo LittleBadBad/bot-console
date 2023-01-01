@@ -1,5 +1,4 @@
 import {BroadcastOperator, Server, Socket} from "socket.io";
-import {DefaultEventsMap} from "socket.io/dist/typed-events";
 import Buffer from "buffer";
 import {BOT_LOGGED, BOT_LOGGED_OUT, CONNECTED, DISCONNECTED} from "../errors";
 import login from "./login";
@@ -7,6 +6,7 @@ import {IBotData, IConfig} from "../types";
 import {botServices, oicqServices} from "../services";
 import db from "../db";
 import _ from "lodash";
+import {DefaultEventsMap} from "@socket.io/component-emitter";
 
 export const wsServer = new Server()
 
@@ -14,6 +14,7 @@ export const wsServer = new Server()
 const ONLINE = "ONLINE"
 
 const onError = (socket: Socket) => ({message, type}) => {
+    console.error(message)
     socket.send({message, type: type || "error"})
 }
 

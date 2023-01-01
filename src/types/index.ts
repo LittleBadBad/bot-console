@@ -75,7 +75,7 @@ export interface IOrder {
      *
      * 若需要默认全部触发，可设置为 "" 或 _=>true
      */
-    trigger?: string | string[] | RegExp | ((e: PrivateMessageEvent | GroupMessageEvent | DiscussMessageEvent) => boolean)
+    trigger?: string | string[] | RegExp | ((e: PrivateMessageEvent | GroupMessageEvent | DiscussMessageEvent, bot: IOICQBot) => boolean)
 
     /**
      * 有权限的成员选择
@@ -86,16 +86,17 @@ export interface IOrder {
      *
      * 若需要默认全部触发，可设置为 _=>true
      */
-    auth?: number | number[] | ((e: PrivateMessageEvent | GroupMessageEvent | DiscussMessageEvent) => boolean)
+    auth?: number | number[] | ((e: PrivateMessageEvent | GroupMessageEvent | DiscussMessageEvent, bot: IOICQBot) => boolean)
 
     /**
      * 处理命令
-     * @param e 消息对象，client在插件安装时已传入，不重复传入
+     * @param e 消息对象
+     * @param bot 机器人对象，当插件不为函数为对象时获取到机器人和其client的方法
      */
-    action?(e: PrivateMessageEvent | GroupMessageEvent | DiscussMessageEvent)
+    action?(e: PrivateMessageEvent | GroupMessageEvent | DiscussMessageEvent, bot: IOICQBot)
 
     /**
-     * 命令的揭示字段
+     * 命令的解释字段
      */
     desc?: string
 }
@@ -159,10 +160,16 @@ export class LowWithLodash<T> extends LowSync<T> {
 }
 
 /**
- * creat plugin
+ * creat plugin，插件最终模块导出的函数。
+ * 多个机器人使用不同插件时最好单独创建新的实例，所以插件最好以函数的形式定义，
+ * 平台同样支持object式的插件，但是实现复杂功能时还是推荐使用函数
+ *
  * @param bot oicq对象
+ *
  * @param config 安装时的设置参数，managers必存在，其他自行设置
+ *
  * @param db 安装时设置的lowdb对象，插件数据的路径为 __dirname/pluginData/[uin]/[plugin_name]
+ *
  * @return IPluginDetail 插件详细内容
  */
-export type CP<C = any, D = any> = (bot: IOICQBot, config: IConfig<C>, db: LowWithLodash<D>) => IPluginDetail
+export type CP<C = any, D = any> = (bot: IOICQBot, config: IConfig<C>, db: LowWithLodash<D>) => IPluginDetail | Promise<IPluginDetail>

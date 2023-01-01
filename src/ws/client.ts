@@ -1,7 +1,7 @@
 import {Socket} from "socket.io";
 import {IBotData, IConfig, IPlugin, ITip} from "../types";
 import Buffer from "buffer";
-import {DefaultEventsMap} from "socket.io/dist/typed-events";
+import {DefaultEventsMap} from "@socket.io/component-emitter";
 
 export interface IBotInfo extends IBotData {
     plugins: IPlugin[]

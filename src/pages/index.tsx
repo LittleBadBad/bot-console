@@ -85,10 +85,10 @@ function Bot({uin, password, managers, config, plugins, online, login, logout, e
                         {ps.map(v => {
                             const p = plugins.find(v1 => v1.name === v.name)
                             const id = "p_" + v.name
-                            return <li key={v.name} onClick={() => {
-                                v.code && setCurrentPlugin(v)
-                            }}>
-                                <div>{v.name}{p && ",已安装"}{p?.broken && ",已损坏"}</div>
+                            return <li key={v.name}>
+                                <div onClick={() => {
+                                    v.code && setCurrentPlugin(v)
+                                }}>{v.name}{p && ",已安装"}{p?.broken && ",已损坏"}</div>
                                 {p?.activated ? <button onClick={e =>
                                         socket.emit("PLUGIN_DEACTIVATE",
                                             uin,
@@ -164,7 +164,7 @@ function Bot({uin, password, managers, config, plugins, online, login, logout, e
                                   rows={50}
                                   style={{width: 500}}
                                   defaultValue={currentPlugin.code}/>
-                        <div>
+                        <div style={{display: "flex", justifyContent: "space-between"}}>
                             <button onClick={() => setCurrentPlugin(undefined)}>取消</button>
                             <button type={"submit"}>提交</button>
                         </div>
@@ -309,16 +309,26 @@ export default function Home() {
             // @ts-ignore
             const managers = event.target.managers.value
                 .split(",").map(v => parseInt(v))
+            let config
+            try {
+                // @ts-ignore
+                config = JSON.parse(event.target.config.value)
+            } catch (e) {
+                config = {platform: 2}
+            }
             socket.emit(current.uin ? "BOT_UPDATE" : "BOT_CREATE", {
                 ...current,
                 uin,
-                password, managers,
+                password,
+                managers,
+                config
             })
         }}>
             {/**todo add config edit*/}
             <input placeholder={"uin"} name={"uin"} defaultValue={current.uin || ""} disabled={!!current.uin}/>
             <input placeholder={"password"} name={"password"} defaultValue={current.password}/>
             <input placeholder={"managers"} name={"managers"} defaultValue={current.managers.join(",")}/>
+            <input placeholder={"config"} name={"config"} defaultValue={JSON.stringify(current.config || {})}/>
             <button onClick={() => setCurrent(undefined)}>取消</button>
             <button type={"submit"}>提交</button>
         </form>) || true}

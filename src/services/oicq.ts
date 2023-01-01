@@ -1,6 +1,6 @@
 import {createClient} from "oicq";
 import {Socket} from "socket.io";
-import {CP, IBotData, IConfig, IOICQBot, IPlugin, IPluginData, LowWithLodash} from "../types";
+import {CP, IBotData, IConfig, IOICQBot, IPlugin, IPluginData, IPluginDetail, LowWithLodash} from "../types";
 import {BOT_EXISTED, BOT_NOT_EXIST, PLUGIN_INSTALLED, PLUGIN_NOT_INSTALLED} from "../errors";
 import {RoomBroadcaster, wsServer} from "../ws";
 import {pluginServices} from ".";
@@ -13,10 +13,6 @@ const DATA_DIR_ROOT = "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\pluginData
 
 export const oicqBots: IOICQBot[] = []
 
-export function reRequire(module) {
-    delete require.cache?.[require.resolve(module)]
-    return require(module)
-}
 
 /**
  * @deprecated
@@ -33,25 +29,31 @@ export async function reImport(module) {
     return await import(module)
 }
 
+const pluginBroken = {
+    broken: true,
+    activated: false,
+    orders: []
+}
+
+export function reRequire(module) {
+    delete require.cache?.[require.resolve(module)]
+    return require(module)
+}
+
 export async function resolveModule({path, ...args}: IPluginData): Promise<CP> {
     try {
         const m = reRequire(path)// 此处已删除缓存
-        if (typeof m === "function") return m
-        if (typeof m !== "function" && typeof m.default === "function")
-            return m.default
-        throw 1
+        return m.default || m
     } catch (e) {
-        // try {
-        //     return import(path).then(r=>r.default) // todo ？import 多次多个路径只返回最后一次import的
-        // } catch (e) {
-        return _ => ({
-            ...args,
-            path,
-            broken: true,
-            activated: false,
-            orders: []
-        })
-        // }
+        try {
+            return await import(path).then(r => r.default) // todo ？import 多次多个路径只返回最后一次import的
+        } catch (e) {
+            return _ => ({
+                ...args,
+                path,
+                ...pluginBroken
+            })
+        }
     }
 }
 
@@ -157,15 +159,15 @@ function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster, socket?: So
                         ((typeof trigger === "string" && raw_message.includes(trigger)) ||
                             (Array.isArray(trigger) && trigger.find(v => raw_message.includes(v))) ||
                             (trigger instanceof RegExp && trigger.test(raw_message)) ||
-                            (typeof trigger === "function" && trigger(event)))
+                            (typeof trigger === "function" && trigger(event, bot)))
                     ) && (
                         (typeof auth === "number" && auth === event.user_id) ||
                         (Array.isArray(auth) && auth.includes?.(event.user_id)) ||
-                        (typeof auth === "function" && auth(event)) ||
+                        (typeof auth === "function" && auth(event, bot)) ||
                         (!auth && bot.managers.includes(event.user_id))
                     )
                 ) {
-                    order.action?.(event)
+                    order.action?.(event, bot)
                 }
             }
         }
@@ -202,7 +204,11 @@ async function loadPlugin(plugin: IPluginData, bot: IOICQBot, config: IConfig = 
     if (!fs.existsSync(dbPath))
         await fs.promises.mkdir(dbPath, {recursive: true})
     const db = new LowWithLodash(new JSONFileSync(path.join(dbPath, plugin.name + ".json")))
-    const pluginDetail = (await resolveModule(plugin))(bot, config, db)
+    const pluginModule = await resolveModule(plugin) as CP | IPluginDetail
+    const p = (typeof pluginModule === "function" && pluginModule(bot, config, db)) || false
+    const pluginDetail = ((p instanceof Promise && await p) || p ||
+        (typeof pluginModule === "object" && pluginModule) ||
+        pluginBroken) as IPluginDetail
     return {
         ...pluginDetail,
         ...plugin,
