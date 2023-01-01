@@ -156,7 +156,13 @@ export default callDaddy
     - 若需要默认全部触发，可设置为 `_=>true`
 
 - action 处理命令
-    - 参数 e oicq消息对象
+
+    Params:
+
+|name|desc|
+|---|---|
+| e | 消息对象|
+| bot | 机器人对象，当插件不为函数为对象时获取到机器人和其client的方法|
 
 - desc 命令的解释字段
 
