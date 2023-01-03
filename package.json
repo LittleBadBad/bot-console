@@ -14,7 +14,7 @@
     "@emotion/styled": "^11.10.5",
     "@mui/material": "^5.11.0",
     "canvas": "^2.11.0",
-    "chatgpt": "^3.3.8",
+    "chatgpt":"^3.3.10",
     "html-to-image": "^1.11.3",
     "http-status-codes": "^2.2.0",
     "lodash": "^4.17.21",

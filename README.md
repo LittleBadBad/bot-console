@@ -3,6 +3,8 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped
 with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
+update: 新增基于[chatgpt](https://www.npmjs.com/package/chatgpt#authentication)开发的[chatgpt插件](./src/plugins/chatGPT.ts)
+
 # oicq机器人管理后台
 
 基于 [nextjs](https://nextjs.org/) + [oicq](https://www.npmjs.com/package/oicq)

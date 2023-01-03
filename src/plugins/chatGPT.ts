@@ -95,7 +95,7 @@ const chatGPT: CP<{
     }
 
     const chatWithGpt: IOrder = {
-        desc: "和chatgpt聊天，@群聊中的机器人+要说的话即可",
+        desc: "和chatgpt聊天，@群聊中的机器人+要说的话即可，返回消息暂时为图片，因为过长文本会被标记为风控消息",
         trigger: (e: GroupMessageEvent) => availableGroups.includes(e.group.group_id) && e.atme,
         auth: _ => true,
         async action(e: GroupMessageEvent) {
@@ -127,6 +127,15 @@ const chatGPT: CP<{
             const g = parseInt(e.raw_message.match(/\d+/g)[0])
             !availableGroups.includes(g) && availableGroups.push(g)
             e.reply("更改成功，现在机器人现在可在群" + g + "中使用", true)
+        }
+    }
+
+    const resetThread: IOrder = {
+        trigger: /^重置线程$/g,
+        auth: _ => true,
+        async action(e) {
+            await api.resetThread()
+            return e.reply("重置成功", true)
         }
     }
 
@@ -162,6 +171,7 @@ const chatGPT: CP<{
             resetSession,
             refreshSession,
             changeGroup,
+            resetThread,
             test
         ]
     }
