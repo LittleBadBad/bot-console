@@ -43,8 +43,7 @@ const index: CP<{
         email,
         password,
         debug: false,
-        minimize: true,
-        markdown: false
+        minimize: true
     })
 
     let logged = false,
@@ -78,12 +77,11 @@ const index: CP<{
     }
 
     const resetSession: IOrder = {
-        desc: "刷新页面——刷新页面，防止掉线",
+        desc: "刷新页面——刷新页面，防止掉线，此操作每小时执行一次",
         trigger: /^刷新页面$/g,
         auth: (e: GroupMessageEvent) => availableGroups.includes(e.group.group_id),
         async action(e) {
-            await api.resetSession()
-            logged = false
+            await api.refreshSession()
             return e.reply("刷新页面成功", true)
         }
     }
@@ -93,7 +91,7 @@ const index: CP<{
         trigger: /^重新登录$/g,
         auth: (e: GroupMessageEvent) => availableGroups.includes(e.group.group_id),
         async action(e) {
-            await api.refreshSession()
+            await api.resetSession()
             return e.reply("重新登录成功", true)
         }
     }
@@ -231,9 +229,19 @@ const index: CP<{
             convertTextToImage(orders.map(v => v.desc).join("\n"))
     })
 
+    let interval
+
     return {
+        onActivate() {
+            interval = setInterval(async () => {
+                availableGroups[0] && await bot.client.sendGroupMsg(availableGroups[0], "正在刷新页面");
+                await api.refreshSession()
+                availableGroups[0] && await bot.client.sendGroupMsg(availableGroups[0], "刷新成功");
+            }, 3600 * 1000)
+        },
         onDeactivate() {
             api.closeSession()
+            clearInterval(interval)
         },
         orders
     }
