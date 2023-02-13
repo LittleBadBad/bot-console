@@ -2,11 +2,13 @@ import {BroadcastOperator, Server, Socket} from "socket.io";
 import Buffer from "buffer";
 import {BOT_LOGGED, BOT_LOGGED_OUT, CONNECTED, DISCONNECTED} from "../errors";
 import login from "./login";
-import {IBotData, IConfig} from "../types";
+import {IBotData, IConfig, IJWTPayload, IPluginData, IPluginInfo, ISocketMessage} from "../types";
 import {botServices, oicqServices} from "../services";
 import db from "../db";
 import _ from "lodash";
 import {DefaultEventsMap} from "@socket.io/component-emitter";
+
+import jwt from "jsonwebtoken";
 
 export const wsServer = new Server()
 
@@ -38,6 +40,8 @@ export function socketListener(errHandle?) {
  *
  */
 export interface BotSocket extends Socket {
+    send(data: ISocketMessage)
+
     /**
      * CRUD
      * @param event
@@ -129,7 +133,7 @@ export interface RoomBroadcaster extends BroadcastOperator<DefaultEventsMap, any
      * @param event
      * @param bots
      */
-    emit(event: "BOT_STATUS", bots: IBotData[]): boolean
+    emit(event: "BOT_STATUS", bots: (IBotData & { plugins: Omit<IPluginData & IPluginInfo, "code">[] })[]): boolean
 
     /**
      * 设备锁验证
@@ -259,15 +263,13 @@ function initSocket(socket: BotSocket, listener: <T extends (...args: any[]) => 
     socket.on("PLUGIN_INSTALL", listener(async (uin, name, config) => {
         // await oicqServices.installPlugin(uin, name, managers)
         const bot = botServices.getBot(uin)
-        const {path, code, id, activated, broken} = await oicqServices.installPlugin(uin, name, config)//pluginServices.getPlugin(name)
+        const {id} = await oicqServices.installPlugin(uin, name, config)//pluginServices.getPlugin(name)
         await botServices.updateBot({
             ...bot,
             plugins: [
                 ...bot.plugins || [], {
                     id,
                     name,
-                    path,
-                    code,
                     config
                 }]
         })
@@ -338,7 +340,25 @@ export function initWSServer() {
                               config,
                               online
                           }) =>// todo 优化plugin数据的传输
-                    ({uin, managers, plugins, config, online})))
+                    ({
+                        uin, managers,
+                        plugins: plugins.map(({
+                                                  name,
+                                                  path,
+                                                  id,
+                                                  activated,
+                                                  broken,
+                                                  config
+                                              }) => ({
+                            name,
+                            path,
+                            id,
+                            activated,
+                            broken,
+                            config
+                        })),
+                        config, online
+                    })))
     }, 1000)
 
     wsServer.on("connection", (socket: BotSocket) => {
@@ -346,7 +366,10 @@ export function initWSServer() {
         const listener = socketListener(onError(socket))
         socket.on("ACCOUNT_LOGIN", listener(async (username: string, password: string) => {
             await login(username, password)
-            socket.send(CONNECTED)
+            const secret = process.env.JWT_SECERET_KEY || "secret"
+            const payload: IJWTPayload = {user: username}
+            const token = jwt.sign(payload, secret, {expiresIn: "10h"})
+            socket.send({...CONNECTED, data: token})
             if (!socket.rooms.has(ONLINE)) {
                 socket.join(ONLINE);
                 initSocket(socket, listener)

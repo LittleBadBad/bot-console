@@ -4,15 +4,28 @@ import db from "../db";
 import * as fs from "fs";
 import path from "path";
 
-const PLUGIN_PATH = "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\plugins"
 
-function pluginPath(p: string, dir = PLUGIN_PATH) {
-    return path.join(dir, p + ".js")
+/**
+ * 根据插件数据获取插件模组引入路径
+ * @param p
+ */
+export const pluginPath = (p: IPluginData) => {
+    const CUSTOM_PLUGIN_PATH = process.env.CUSTOM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\plugins"
+    const SYSTEM_PLUGIN_PATH = process.env.SYSTEM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\src\\plugins"
+    return path.join(p.custom ? CUSTOM_PLUGIN_PATH : SYSTEM_PLUGIN_PATH, p.path)
 }
 
-function loadCode(path) {
+/**
+ * 通过网页管理端开发的插件路径名，目前仅支持js语法的插件自定义开发
+ * @param p
+ */
+function customPluginPath(p: string) {
+    return p + ".js"
+}
+
+function loadCode(p: IPluginData) {
     try {
-        return fs.readFileSync(path).toString()
+        return fs.readFileSync(pluginPath(p)).toString()
     } catch (e) {
         return ""
     }
@@ -20,7 +33,7 @@ function loadCode(path) {
 
 function getPlugins() {
     db.read()
-    return db.data.plugins.map(v => ({...v, code: loadCode(v.path)}))
+    return db.data.plugins.map(v => ({...v, code: loadCode(v)}))
 }
 
 function getPlugin(name: string) {
@@ -29,20 +42,20 @@ function getPlugin(name: string) {
     if (!plugin) {
         throw PLUGIN_NOT_EXIST
     }
-    plugin.code = loadCode(plugin.path)
+    plugin.code = loadCode(plugin)
     return plugin
 }
 
 /**
  * 通过网页添加的插件，路径一律走pluginPath
- * @see pluginPath
+ * @see customPluginPath
  * @param pluginInfo
  */
 function addPlugin(pluginInfo: IPluginData) {
     const p = getPlugins().find(v => v.name === pluginInfo.name)
     if (!p) {
-        db.data.plugins.push({...pluginInfo, path: pluginPath(pluginInfo.name)})
-        fs.writeFileSync(pluginPath(pluginInfo.name), pluginInfo.code)
+        db.data.plugins.push({...pluginInfo, path: customPluginPath(pluginInfo.name)})
+        fs.writeFileSync(customPluginPath(pluginInfo.name), pluginInfo.code)
         db.write()
         return pluginInfo
     } else {
@@ -78,12 +91,8 @@ async function updatePlugin(pluginInfo: IPluginData) {
     }
 }
 
-function findPlugins(){
-
-}
-
 export {
-    pluginPath,
+    customPluginPath,
     getPlugins,
     getPlugin,
     addPlugin,

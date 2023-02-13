@@ -8,8 +8,9 @@ import {JSONFileSync} from "../vendor/lowdb/adapters/JSONFileSync";
 import path from "path";
 import fs from "fs";
 import {uuid} from "oicq/lib/common";
+import {pluginPath} from "./plugin";
 
-const DATA_DIR_ROOT = "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\pluginData"
+const DATA_DIR_ROOT = process.env.DATA_DIR_ROOT || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\pluginData"
 
 export const oicqBots: IOICQBot[] = []
 
@@ -40,7 +41,8 @@ export function reRequire(module) {
     return require(module)
 }
 
-export async function resolveModule({path, ...args}: IPluginData): Promise<CP> {
+export async function resolveModule(p: IPluginData): Promise<CP> {
+    const path = pluginPath(p)
     try {
         const m = reRequire(path)// 此处已删除缓存
         return m.default || m
@@ -49,7 +51,7 @@ export async function resolveModule({path, ...args}: IPluginData): Promise<CP> {
             return await import(path).then(r => r.default) // todo ？import 多次多个路径只返回最后一次import的
         } catch (e) {
             return _ => ({
-                ...args,
+                ...p,
                 path,
                 ...pluginBroken
             })
@@ -85,10 +87,10 @@ async function addOicqBot(botInfo: IBotData) {
             online: false,
             client
         }
-        bot.plugins = await Promise.all(botInfo.plugins?.map(v => loadPlugin(v, bot, v.config)) || [])
+        bot.plugins = await Promise.all(botInfo.plugins?.map(v => loadPlugin(pluginServices.getPlugin(v.name), bot, v.config)) || [])
         getOicqBots().push(bot)
         attachSocket(botInfo.uin, wsServer as unknown as RoomBroadcaster)
-        console.log(bot.uin, "已加载")
+        console.info(bot.uin, "已加载")
         return bot
     } else {
         throw BOT_EXISTED
@@ -122,7 +124,7 @@ async function updateOicqBot(botInfo: IBotData) {
     getOicqBots()[i] = {
         ...oicqBot,
         ...botInfo,
-        plugins: await Promise.all(oicqBot.plugins.map(v => loadPlugin(v, oicqBot, v.config)))
+        plugins: await Promise.all(oicqBot.plugins.map(v => loadPlugin(pluginServices.getPlugin(v.name), oicqBot, v.config)))
     }
 }
 
@@ -209,6 +211,7 @@ async function loadPlugin(plugin: IPluginData, bot: IOICQBot, config: IConfig = 
     const pluginDetail = ((p instanceof Promise && await p) || p ||
         (typeof pluginModule === "object" && pluginModule) ||
         pluginBroken) as IPluginDetail
+    console.info(bot.uin, plugin.name, "已加载")
     return {
         ...pluginDetail,
         ...plugin,

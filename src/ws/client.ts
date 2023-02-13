@@ -1,5 +1,5 @@
 import {Socket} from "socket.io";
-import {IBotData, IConfig, IPlugin, ITip} from "../types";
+import {IBotData, IConfig, IPlugin, ISocketMessage} from "../types";
 import Buffer from "buffer";
 import {DefaultEventsMap} from "@socket.io/component-emitter";
 
@@ -170,6 +170,6 @@ export interface ClientSocket extends Socket<DefaultEventsMap, DefaultEventsMap>
      */
     on(event: "BOT_ONLINE", listener: () => void)
 
-    on(event: "message", listener: (m: ITip) => void)
+    on(event: "message", listener: (m: ISocketMessage) => void)
 }
 

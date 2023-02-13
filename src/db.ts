@@ -6,6 +6,6 @@ export type IDb = {
     plugins: IPluginData[]
 }
 
-const dbPath = "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\db.json"
+const dbPath = process.env.DB_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\db.json"
 const db = new LowWithLodash<IDb>(new JSONFileSync<IDb>(dbPath))
 export default db

@@ -9,9 +9,14 @@ export type IError = {
     message: string
 }
 
-export type ITip = {
-    type: "warn" | "error" | "info" | "success"
+export type IJWTPayload = {
+    user: string
+}
+
+export type ISocketMessage = {
+    type?: "warn" | "error" | "info" | "success"
     message: string
+    data?
 }
 
 export type IReturn<T> = [
@@ -46,6 +51,16 @@ export type IPluginData = {
      * 唯一值，一个机器人中只允许安装一次
      */
     name: string
+
+    /**
+     * 插件描述
+     */
+    desc?: string
+
+    /**
+     * 插件是否为通过管理端网页自定义
+     */
+    custom?: boolean
 
     /**
      * 脚本路径
@@ -107,6 +122,9 @@ export type IConfig<T extends Record<any, any> = any> = {
     [K in keyof T]: T[K]
 };
 
+/**
+ * 插件运行状态
+ */
 export interface IPluginInfo {
 
     /**
@@ -134,6 +152,9 @@ export interface IPluginInfo {
     config: IConfig
 }
 
+/**
+ * 插件指令和插件关键函数
+ */
 export interface IPluginDetail {
     /**
      * 命令集合

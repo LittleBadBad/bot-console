@@ -3,6 +3,7 @@ import {IMiddleware} from "next-compose-router";
 import {IPluginData, IReturn} from "../../../types";
 import {METHOD_NOT_ALLOWED} from "../../../errors";
 import {pluginServices} from "../../../services";
+import {checkAuth, router} from "../../../kit";
 
 const postPlugin: IMiddleware<IReturn<IPluginData>> =
     async (req,
@@ -45,7 +46,9 @@ export const botHandler = {
 }
 
 
-export default function handler(req: NextApiRequest,
-                                res: NextApiResponse) {
+async function handler(req: NextApiRequest,
+                       res: NextApiResponse) {
     return botHandler[req.method](req, res)
 }
+
+export default router(checkAuth, handler)

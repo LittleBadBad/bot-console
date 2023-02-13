@@ -42,3 +42,7 @@ next-env.d.ts
 /yarn.lock
 /src/plugins/
 /test.json
+/db_.json
+/package_.json
+/.env
+/src/validUsers.ts

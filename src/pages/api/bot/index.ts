@@ -1,9 +1,9 @@
 import {NextApiRequest, NextApiResponse} from "next";
-import {checkAuth, checkParams, router} from "../../../kit";
+import {checkAuth, router} from "../../../kit";
 import {IMiddleware} from "next-compose-router";
 import {IBotData, IReturn} from "../../../types";
 import {METHOD_NOT_ALLOWED} from "../../../errors";
-import {botServices, oicqServices} from "../../../services";
+import {botServices} from "../../../services";
 
 const postBot: IMiddleware<IReturn<IBotData>> =
     async (req,
@@ -50,4 +50,4 @@ async function handler(req: NextApiRequest,
     return botHandler[req.method](req, res)
 }
 
-export default router(checkAuth, checkParams, handler)
+export default router(checkAuth, handler)
