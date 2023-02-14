@@ -87,7 +87,7 @@ export default function Bot({uin, password, managers, config, plugins, online, l
                         onSubmit={e => {
                             e.preventDefault()
                             const {name, code} = currentPlugin;
-                            (currentPlugin.name ?
+                            (!modify ?
                                 requester.put("/api/bot/plugin", {
                                     name,
                                     code

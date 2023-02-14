@@ -14,7 +14,7 @@ export type IJWTPayload = {
 }
 
 export type ISocketMessage = {
-    type?: "warn" | "error" | "info" | "success"
+    type?: "warning" | "error" | "info" | "success"
     message: string
     data?
 }

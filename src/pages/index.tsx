@@ -1,11 +1,13 @@
 import {io} from "socket.io-client";
 import {createContext, useEffect, useState} from "react";
 import {ClientSocket, IBotInfo} from "../ws";
-import {IBotData, IPluginData} from "../types";
-import Modal from "@mui/material/Modal";
+import {IBotData, IPluginData, ISocketMessage} from "../types";
 import Bot from "../component/bot";
 import axios from "axios";
 import {CONNECTED} from "../errors";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import Dialog from "@mui/material/Dialog";
 
 export const requester = axios.create()
 
@@ -23,13 +25,13 @@ export const GlobalContext = createContext<{ refresh, socket?: ClientSocket }>({
 export default function Home() {
     const [botInfos, setBotInfos] = useState<IBotInfo[]>([])
     const [socket, setSocket] = useState<ClientSocket>(null)
-    const [messages, setMessages] = useState<string[]>([])
+    const [messages, setMessages] = useState<ISocketMessage[]>([])
     const [qr, setQr] = useState("")
     const [slide, setSlide] = useState("")
     const [current, setCurrent] = useState<IBotData>()
     const [username, setU] = useState("")
     const [password, setP] = useState("")
-    const [loginOpen, setO] = useState(false)
+    const [loginOpen, setLoginOpen] = useState(false)
     const [allPlugins, setAllPlugins] = useState<IPluginData[]>([])
 
     function refresh() {
@@ -44,7 +46,7 @@ export default function Home() {
         setSocket(s)
         s.on("BOT_STATUS", bots => setBotInfos(bots))
         s.on("message", ({message, type, data}) => {
-            setMessages(pre => [...pre, message])
+            setMessages(pre => [...pre, {message, type}])
             if (message === "添加成功" || message === "更新成功") {
                 setCurrent(undefined)
             } else if (message === CONNECTED.message) {
@@ -53,7 +55,7 @@ export default function Home() {
             }
         })
 
-        s.on("BOT_ONLINE", () => setMessages(pre => [...pre, "机器人已上线"]))
+        s.on("BOT_ONLINE", () => setMessages(pre => [...pre, {message: "机器人已上线", type: "success"}]))
         s.on("BOT_LOGIN_QRCODE", img => {
             var blob = new Blob([img], {type: "image/jpeg"});
             var urlCreator = URL;
@@ -63,11 +65,8 @@ export default function Home() {
         s.on("BOT_LOGIN_SLIDER", url => {
             setSlide(url)//
         })
-
-
         return () => {
             s.removeAllListeners()
-
         }
     }, [])
 
@@ -111,18 +110,23 @@ export default function Home() {
     }
 
     return <GlobalContext.Provider value={{refresh, socket}}>
-        <button onClick={() => setO(true)}>账户登录
-        </button>
-        <button onClick={() => {
-            setCurrent({uin: 0, config: undefined, plugins: [], password: "", managers: []})
-        }}>添加qq
-        </button>
-        <input placeholder={"ticket"} id={"ticket"}/>
-        <button onClick={() => {
-            socket.emit("BOT_LOGIN_SLIDER",
-                737801717, "")
-        }}>发送ticket
-        </button>
+        <Button onClick={() => setLoginOpen(true)}>账户登录
+        </Button>
+        <Button onClick={() => setCurrent({uin: 0, config: undefined, plugins: [], password: "", managers: []})}>
+            添加qq
+        </Button>
+        {botInfos?.length &&
+        <Button onClick={() => botInfos.forEach(v => botLogin(v.uin))}>
+            全部登录
+        </Button>}
+        {botInfos?.length &&
+        <Button onClick={() =>
+            botInfos.forEach(bot =>
+                bot.plugins.forEach(plugin => socket.emit("PLUGIN_ACTIVATE",
+                    bot.uin,
+                    plugin.name)))}>
+            插件全部启动
+        </Button>}
         <div>----表单区--------------------</div>
         {(current && <form onSubmit={event => {
             event.preventDefault()
@@ -157,7 +161,7 @@ export default function Home() {
             <button type={"submit"}>提交</button>
         </form>) || true}
         <div>----提示信息------------------</div>
-        {messages.join("; ")}
+        {messages.map(v => v.type + ":" + v.message).join("; ")}
         <div>----滑块链接------------------</div>
         {slide}
         <div>----二维码-------------------</div>
@@ -175,29 +179,21 @@ export default function Home() {
                 allPlugins={allPlugins}
             />)}
         </ol>
-        <Modal open={loginOpen} onClose={_ => setO(false)}>
-            <form style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                minWidth: 600,
-                minHeight: 200, maxHeight: 700, overflow: "auto", backgroundColor: "#ffffff"
-            }} onSubmit={e => {
+        <Dialog open={loginOpen} onClose={_ => setLoginOpen(false)}>
+            <form onSubmit={e => {
                 e.preventDefault()
                 socket.emit("ACCOUNT_LOGIN", username, password)
-                setO(false)
+                setLoginOpen(false)
             }}>
-                <input placeholder={"username"}
-                       value={username}
-                       onChange={e => setU(e.target.value)}/>
-                <input placeholder={"password"}
-                       value={password}
-                       type={"password"}
-                       onChange={e => setP(e.target.value)}/>
-                <button type={"submit"}>确定
-                </button>
+                <TextField placeholder={"username"}
+                           value={username}
+                           onChange={e => setU(e.target.value)}/>
+                <TextField placeholder={"password"}
+                           value={password}
+                           type={"password"}
+                           onChange={e => setP(e.target.value)}/>
+                <Button type={"submit"}>确定</Button>
             </form>
-        </Modal>
+        </Dialog>
     </GlobalContext.Provider>
 }

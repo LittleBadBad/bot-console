@@ -4,14 +4,14 @@ import db from "../db";
 import * as fs from "fs";
 import path from "path";
 
+const CUSTOM_PLUGIN_PATH = process.env.CUSTOM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\plugins"
+const SYSTEM_PLUGIN_PATH = process.env.SYSTEM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\src\\plugins"
 
 /**
  * 根据插件数据获取插件模组引入路径
  * @param p
  */
 export const pluginPath = (p: IPluginData) => {
-    const CUSTOM_PLUGIN_PATH = process.env.CUSTOM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\plugins"
-    const SYSTEM_PLUGIN_PATH = process.env.SYSTEM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\src\\plugins"
     return path.join(p.custom ? CUSTOM_PLUGIN_PATH : SYSTEM_PLUGIN_PATH, p.path)
 }
 
@@ -20,7 +20,7 @@ export const pluginPath = (p: IPluginData) => {
  * @param p
  */
 function customPluginPath(p: string) {
-    return p + ".js"
+    return path.join(CUSTOM_PLUGIN_PATH, p + ".js")
 }
 
 function loadCode(p: IPluginData) {
@@ -54,7 +54,7 @@ function getPlugin(name: string) {
 function addPlugin(pluginInfo: IPluginData) {
     const p = getPlugins().find(v => v.name === pluginInfo.name)
     if (!p) {
-        db.data.plugins.push({...pluginInfo, path: customPluginPath(pluginInfo.name)})
+        db.data.plugins.push({...pluginInfo, custom: true, path: customPluginPath(pluginInfo.name)})
         fs.writeFileSync(customPluginPath(pluginInfo.name), pluginInfo.code)
         db.write()
         return pluginInfo
@@ -81,8 +81,8 @@ async function removePlugin(name: string) {
 async function updatePlugin(pluginInfo: IPluginData) {
     const i = getPlugins().findIndex(v => v.name === pluginInfo.name)
     if (i > -1) {
-        const path = db.data.plugins[i].path
-        db.data.plugins[i] = {...pluginInfo, path}
+        const path = pluginPath(db.data.plugins[i])
+        db.data.plugins[i] = {...db.data.plugins[i], ...pluginInfo}
         fs.writeFileSync(path, pluginInfo.code)
         db.write()
         return pluginInfo
