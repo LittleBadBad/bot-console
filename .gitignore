@@ -46,3 +46,4 @@ next-env.d.ts
 /package_.json
 /.env
 /src/validUsers.ts
+/haotuCache/

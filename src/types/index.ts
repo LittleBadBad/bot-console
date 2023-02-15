@@ -193,4 +193,4 @@ export class LowWithLodash<T> extends LowSync<T> {
  *
  * @return IPluginDetail 插件详细内容
  */
-export type CP<C = any, D = any> = (bot: IOICQBot, config: IConfig<C>, db: LowWithLodash<D>) => IPluginDetail | Promise<IPluginDetail>
+export type CP<Config = any, DbType = any> = (bot: IOICQBot, config: IConfig<Config>, db: LowWithLodash<DbType>) => IPluginDetail | Promise<IPluginDetail>

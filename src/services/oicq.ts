@@ -153,7 +153,7 @@ function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster, socket?: So
         const {plugins} = bot
         const raw_message = event.raw_message.trim()
         for (const plugin of plugins.filter(v => v.activated)) {
-            for (const order of plugin.orders) {
+            for (const order of plugin.orders || []) {
                 const {trigger, auth} = order
                 if (
                     (
@@ -169,7 +169,11 @@ function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster, socket?: So
                         (!auth && bot.managers.includes(event.user_id))
                     )
                 ) {
-                    order.action?.(event, bot)
+                    try {
+                        order.action?.(event, bot)
+                    } catch (e) {
+                        console.error(bot.uin, event, " Error ", e)
+                    }
                 }
             }
         }
