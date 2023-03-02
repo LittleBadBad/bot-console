@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": false,
   "scripts": {
-    "start": "npm run build && ts-node --project tsconfig.server.json -r dotenv/config index.ts",
+    "start": "ts-node --project tsconfig.server.json -r dotenv/config index.ts dotenv_config_path=.env",
     "temp-test": "ts-node --project tsconfig.server.json src/plugins/dutyReminderTest.ts",
-    "build": "next build",
-    "dev": "ts-node --project tsconfig.server.json -r dotenv/config index.ts",
+    "build:next": "next build",
+    "build:tsc": "tsc --project tsconfig.server.json",
+    "dev": "ts-node --project tsconfig.server.json -r dotenv/config index.ts dotenv_config_path=.env.test",
     "lint": "next lint"
   },
   "dependencies": {
@@ -20,7 +21,6 @@
     "next": "13.0.6",
     "next-compose-router": "^1.0.1",
     "node-schedule": "^2.1.0",
-    "oicq": "^2.3.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "dotenv": "^16.0.3",
@@ -28,7 +28,9 @@
     "socket.io-client": "^4.5.4",
     "steno": "^3.0.0",
     "jsonwebtoken": "^9.0.0",
-    "bcrypt":"^5.1.0"
+    "bcrypt": "^5.1.0",
+    "portfinder": "^1.0.32",
+    "puppeteer": "^19.7.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",

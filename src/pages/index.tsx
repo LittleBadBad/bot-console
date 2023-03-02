@@ -42,6 +42,8 @@ export default function Home() {
     }
 
     useEffect(() => {
+        setU(localStorage.getItem("username") || "")
+        setP(localStorage.getItem("password") || "")
         const s = io() as unknown as ClientSocket
         setSocket(s)
         s.on("BOT_STATUS", bots => setBotInfos(bots))
@@ -63,12 +65,21 @@ export default function Home() {
             setQr(imageUrl)
         })
         s.on("BOT_LOGIN_SLIDER", url => {
+            url = "https://github.com"
             setSlide(url)//
+            const {ipcRenderer} = (window as any).electron || {}
+            ipcRenderer && ipcRenderer.send('asynchronous-message', url)//
         })
+
         return () => {
             s.removeAllListeners()
         }
     }, [])
+
+    useEffect(() => {
+        localStorage.setItem("username", username)
+        localStorage.setItem("password", password)
+    }, [password, username])
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -109,6 +120,7 @@ export default function Home() {
         socket.emit("BOT_DELETE", uin)
     }
 
+
     return <GlobalContext.Provider value={{refresh, socket}}>
         <Button onClick={() => setLoginOpen(true)}>账户登录
         </Button>
@@ -116,17 +128,17 @@ export default function Home() {
             添加qq
         </Button>
         {botInfos?.length &&
-        <Button onClick={() => botInfos.forEach(v => botLogin(v.uin))}>
-            全部登录
-        </Button>}
+            <Button onClick={() => botInfos.forEach(v => botLogin(v.uin))}>
+                全部登录
+            </Button>}
         {botInfos?.length &&
-        <Button onClick={() =>
-            botInfos.forEach(bot =>
-                bot.plugins.forEach(plugin => socket.emit("PLUGIN_ACTIVATE",
-                    bot.uin,
-                    plugin.name)))}>
-            插件全部启动
-        </Button>}
+            <Button onClick={() =>
+                botInfos.forEach(bot =>
+                    bot.plugins.forEach(plugin => socket.emit("PLUGIN_ACTIVATE",
+                        bot.uin,
+                        plugin.name)))}>
+                插件全部启动
+            </Button>}
         <div>----表单区--------------------</div>
         {(current && <form onSubmit={event => {
             event.preventDefault()
@@ -163,7 +175,9 @@ export default function Home() {
         <div>----提示信息------------------</div>
         {messages.map(v => v.type + ":" + v.message).join("; ")}
         <div>----滑块链接------------------</div>
-        {slide}
+        {/*{slide}*/}
+        <iframe src={slide} height={300} width={300}/>
+
         <div>----二维码-------------------</div>
 
         <img src={qr} alt={""}/>

@@ -1,6 +1,6 @@
 import {StatusCodes} from "http-status-codes";
-import {Config} from "oicq/lib/client";
-import {Client, DiscussMessageEvent, GroupMessageEvent, PrivateMessageEvent} from "oicq";
+import {Config} from "../vendor/oicq/lib";
+import {Client, DiscussMessageEvent, GroupMessageEvent, PrivateMessageEvent} from "../vendor/oicq/lib";
 import {LowSync} from "../vendor/lowdb";
 import {chain, ExpChain} from "lodash";
 
@@ -32,7 +32,7 @@ export type IBotData = {
     password?: string
     config: Config
     managers: number[]
-    plugins: (IPluginData & IPluginInfo)[]
+    plugins: (IPluginData & IPluginStat)[]
 }
 
 export interface IOICQBot extends IBotData {
@@ -125,7 +125,7 @@ export type IConfig<T extends Record<any, any> = any> = {
 /**
  * 插件运行状态
  */
-export interface IPluginInfo {
+export interface IPluginStat {
 
     /**
      * 安装后的机器人uid
@@ -174,7 +174,7 @@ export interface IPluginDetail {
     onDeactivate?(bot: IOICQBot): void
 }
 
-export type IPlugin = IPluginData & IPluginDetail & IPluginInfo
+export type IPlugin = IPluginData & IPluginDetail & IPluginStat
 
 export class LowWithLodash<T> extends LowSync<T> {
     chain: ExpChain<this['data']> = chain(this).get('data')

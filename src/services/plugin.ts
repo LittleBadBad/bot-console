@@ -3,6 +3,7 @@ import {IPluginData} from "../types";
 import db from "../db";
 import * as fs from "fs";
 import path from "path";
+import {isDirectory, isFile} from "../kit/utils";
 
 const CUSTOM_PLUGIN_PATH = process.env.CUSTOM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\plugins"
 const SYSTEM_PLUGIN_PATH = process.env.SYSTEM_PLUGIN_PATH || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\src\\plugins"
@@ -11,8 +12,13 @@ const SYSTEM_PLUGIN_PATH = process.env.SYSTEM_PLUGIN_PATH || "D:\\workspace\\Ide
  * 根据插件数据获取插件模组引入路径
  * @param p
  */
-export const pluginPath = (p: IPluginData) => {
-    return path.join(p.custom ? CUSTOM_PLUGIN_PATH : SYSTEM_PLUGIN_PATH, p.path)
+export const pluginPath = (p: IPluginData): [string, string, string] => {
+    const modulePath = path.join(p.custom ? CUSTOM_PLUGIN_PATH : SYSTEM_PLUGIN_PATH, p.path)
+    return [
+        modulePath + ".ts",
+        modulePath + ".js",
+        modulePath
+    ]
 }
 
 /**
@@ -24,10 +30,12 @@ function customPluginPath(p: string) {
 }
 
 function loadCode(p: IPluginData) {
-    try {
-        return fs.readFileSync(pluginPath(p)).toString()
-    } catch (e) {
-        return ""
+    for (const modulePath of pluginPath(p)) {
+        try {
+            return fs.readFileSync(modulePath).toString()
+        } catch (e) {
+
+        }
     }
 }
 
@@ -83,7 +91,14 @@ async function updatePlugin(pluginInfo: IPluginData) {
     if (i > -1) {
         const path = pluginPath(db.data.plugins[i])
         db.data.plugins[i] = {...db.data.plugins[i], ...pluginInfo}
-        fs.writeFileSync(path, pluginInfo.code)
+        for (const modulePath of path) {
+            if (isFile(modulePath)) {
+                fs.writeFileSync(modulePath, pluginInfo.code)
+                break;
+            } else if (isDirectory(modulePath)) {
+                // todo rewrite files
+            }
+        }
         db.write()
         return pluginInfo
     } else {

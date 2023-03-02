@@ -2,7 +2,7 @@ import {BroadcastOperator, Server, Socket} from "socket.io";
 import Buffer from "buffer";
 import {BOT_LOGGED, BOT_LOGGED_OUT, CONNECTED, DISCONNECTED} from "../errors";
 import login from "./login";
-import {IBotData, IConfig, IJWTPayload, IPluginData, IPluginInfo, ISocketMessage} from "../types";
+import {IBotData, IConfig, IJWTPayload, IPluginData, IPluginStat, ISocketMessage} from "../types";
 import {botServices, oicqServices} from "../services";
 import db from "../db";
 import _ from "lodash";
@@ -13,7 +13,7 @@ import jwt from "jsonwebtoken";
 export const wsServer = new Server()
 
 
-const ONLINE = "ONLINE"
+export const ONLINE = "ONLINE"
 
 const onError = (socket: Socket) => ({message, type}) => {
     console.error(message)
@@ -133,7 +133,7 @@ export interface RoomBroadcaster extends BroadcastOperator<DefaultEventsMap, any
      * @param event
      * @param bots
      */
-    emit(event: "BOT_STATUS", bots: (IBotData & { plugins: Omit<IPluginData & IPluginInfo, "code">[] })[]): boolean
+    emit(event: "BOT_STATUS", bots: (IBotData & { plugins: Omit<IPluginData & IPluginStat, "code">[] })[]): boolean
 
     /**
      * 设备锁验证
@@ -296,41 +296,9 @@ function initSocket(socket: BotSocket, listener: <T extends (...args: any[]) => 
 
 }
 
-/**
- * @deprecated
- */
-async function syncData() {
-    db.read()
-    const bots = oicqServices.getOicqBots();
-    for (let bot of db.data.bots) {
-        const b = bots.find(v => v.uin === bot.uin)
-        if (!b) {
-            try {
-                await oicqServices.addOicqBot(bot)
-            } catch (e) {
-                console.error(e)
-            }
-        } else if (_.isEqual(
-            _.pick(bot, ["password", "plugins", "config"]),
-            b)) {
-            await oicqServices.updateOicqBot(bot)
-        }
-    }
-    for (const {uin} of bots) {
-        if (!db.data.bots.find(v => v.uin === uin)) {
-            try {
-                await oicqServices.removeOicqBot(uin)
-            } catch (e) {
-                console.error(e)
-            }
-        }
-    }
-}
-
 export function initWSServer() {
     setInterval(async () => {
         const bots = oicqServices.getOicqBots();
-        // await syncData();
         (wsServer as unknown as RoomBroadcaster).to(ONLINE)
             .emit("BOT_STATUS",
                 bots.map(({

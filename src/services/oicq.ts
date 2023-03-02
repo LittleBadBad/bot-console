@@ -1,34 +1,19 @@
-import {createClient} from "oicq";
-import {Socket} from "socket.io";
+import {createClient} from "../vendor/oicq";
 import {CP, IBotData, IConfig, IOICQBot, IPlugin, IPluginData, IPluginDetail, LowWithLodash} from "../types";
 import {BOT_EXISTED, BOT_NOT_EXIST, PLUGIN_INSTALLED, PLUGIN_NOT_INSTALLED} from "../errors";
-import {RoomBroadcaster, wsServer} from "../ws";
+import {ONLINE, RoomBroadcaster, wsServer} from "../ws";
 import {pluginServices} from ".";
 import {JSONFileSync} from "../vendor/lowdb/adapters/JSONFileSync";
 import path from "path";
 import fs from "fs";
-import {uuid} from "oicq/lib/common";
+import {uuid} from "../vendor/oicq/lib/common";
 import {pluginPath} from "./plugin";
+import puppeteer from "puppeteer";
 
 const DATA_DIR_ROOT = process.env.DATA_DIR_ROOT || "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\pluginData"
 
 export const oicqBots: IOICQBot[] = []
 
-
-/**
- * @deprecated
- * @param module
- */
-export async function reImport(module) {
-    const oldKeys = new Set(Object.keys(require.cache));
-    await import(module)
-    const newKeys = Object.keys(require.cache);
-    const filesToWatch = newKeys.filter(x => !oldKeys.has(x));
-    for (const file of filesToWatch) {
-        delete require.cache[file];
-    }
-    return await import(module)
-}
 
 const pluginBroken = {
     broken: true,
@@ -42,13 +27,13 @@ export function reRequire(module) {
 }
 
 export async function resolveModule(p: IPluginData): Promise<CP> {
-    const path = pluginPath(p)
+    const [_js, _ts, modulePath] = pluginPath(p)
     try {
-        const m = reRequire(path)// 此处已删除缓存
+        const m = reRequire(`${modulePath}`)// 此处已删除缓存
         return m.default || m
     } catch (e) {
         try {
-            return await import(path).then(r => r.default) // todo ？import 多次多个路径只返回最后一次import的
+            return await import(`${modulePath}`).then(r => r.default) // todo ？import 多次多个路径只返回最后一次import的
         } catch (e) {
             return _ => ({
                 ...p,
@@ -89,7 +74,7 @@ async function addOicqBot(botInfo: IBotData) {
         }
         bot.plugins = await Promise.all(botInfo.plugins?.map(v => loadPlugin(pluginServices.getPlugin(v.name), bot, v.config)) || [])
         getOicqBots().push(bot)
-        attachSocket(botInfo.uin, wsServer as unknown as RoomBroadcaster)
+        attachSocket(botInfo.uin, (wsServer as unknown as RoomBroadcaster).to(ONLINE))
         console.info(bot.uin, "已加载")
         return bot
     } else {
@@ -113,25 +98,55 @@ async function removeOicqBot(uin: number) {
 }
 
 /**
- * 若存在，机器人下线，插件重装，修改信息
+ * 若存在，修改信息
  * 若不存在，抛出错误
  * @param botInfo
  */
 async function updateOicqBot(botInfo: IBotData) {
     const oicqBot = getOicqBot(botInfo.uin)
-    await logoutBot(botInfo.uin)
     const i = getOicqBots().findIndex(v => v.uin === botInfo.uin)
+    if (i === -1) throw BOT_NOT_EXIST
     getOicqBots()[i] = {
         ...oicqBot,
-        ...botInfo,
-        plugins: await Promise.all(oicqBot.plugins.map(v => loadPlugin(pluginServices.getPlugin(v.name), oicqBot, v.config)))
+        ...botInfo,// todo 此处理论上应先关闭并卸载全部旧插件再重装新插件
+        plugins: oicqBot.plugins
     }
 }
 
-function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster, socket?: Socket) {
+async function ticketLogin(ticketUrl) {
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        executablePath: "D:\\workspace\\IdeaProjects\\zcy\\bot-console\\chrome-win\\chrome.exe",
+        args:  [ '--disable-gpu', '--disable-setuid-sandbox', '--no-sandbox', '--no-zygote' ] ,
+        timeout: 3000
+    });
+
+    const page = await browser.newPage();
+    await page.goto(ticketUrl);
+    await page.setViewport({width: 1080, height: 1024});
+    page.on('response', async response => {
+        const url = response.url();
+        const headers = response.headers();
+        const contentType = headers['content-type'];
+        if (contentType && contentType.startsWith('text/html')) {
+            const body = await response.text();
+            console.log(`Received HTML from ${url}: ${body}`);
+            // 在这里处理 body 数据
+        }
+
+    });
+
+
+    // 在这里关闭浏览器
+    // 在处理完数据后再关闭浏览器
+    await browser.close();
+}
+
+function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster) {
     const bot = getOicqBot(uin)
     const {client} = bot
-    // login
+
     client.on("system.login.device", ({url, phone}) => {
         roomBroadcaster.emit("BOT_LOGIN_DEVICE", uin, url, phone)
     }).on("system.login.error", ({code, message}) => {
@@ -139,6 +154,7 @@ function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster, socket?: So
     }).on("system.login.qrcode", ({image}) => {
         roomBroadcaster.emit("BOT_LOGIN_QRCODE", image)
     }).on("system.login.slider", ({url}) => {
+        // ticketLogin(url)
         roomBroadcaster.emit("BOT_LOGIN_SLIDER", url)
     }).on("system.offline", ({message}) => {
         logoutBot(uin)
@@ -146,6 +162,9 @@ function attachSocket(uin: number, roomBroadcaster: RoomBroadcaster, socket?: So
     }).on("system.offline.kickoff", ({message}) => {
         logoutBot(uin)
         roomBroadcaster.emit("BOT_OFFLINE_KICKOFF", message)
+    }).on("system.offline.network", event => {
+        // todo 在此发出下线警报或立即重启系统重新登录
+        console.warn(`warning, ${uin} 即将掉线`)
     }).on("system.online", event => {
         bot.online = true
         roomBroadcaster.emit("BOT_ONLINE")
@@ -254,6 +273,7 @@ function activatePlugin(uin: number, name: string) {
         plugin.activated = true
         plugin.onActivate?.(oicqBot)
     }
+    console.info(uin, name, "已启动")
 }
 
 function deactivatePlugin(uin: number, name: string) {
@@ -264,6 +284,7 @@ function deactivatePlugin(uin: number, name: string) {
         plugin.activated = false
         plugin.onDeactivate?.(oicqBot)
     }
+    console.info(uin, name, "已关闭")
 }
 
 export {
